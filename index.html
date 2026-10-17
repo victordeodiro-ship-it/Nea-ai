@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10102a">
+<meta name="description" content="Nea AI — sua companheira de ideias.">
+<link rel="manifest" href="manifest.json">
+<title>Nea AI</title>
+<style>
+:root{color-scheme:dark;--bg:#090b1b;--panel:#12152d;--line:#292d58;--blue:#69d5ff;--purple:#a78bfa;--text:#f4f5ff;--muted:#a8add0}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(ellipse at 15% 0%,#20245a 0,transparent 42%),radial-gradient(ellipse at 100% 50%,#25144d 0,transparent 40%),var(--bg);color:var(--text);min-height:100dvh}
+.app{max-width:760px;margin:auto;height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:12px;padding:18px 4px 14px;border-bottom:1px solid #ffffff14}
+.logo{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);box-shadow:0 0 28px #6d5df766}
+.brand{flex:1}.brand h1{font-size:20px;margin:0;letter-spacing:.3px}.brand p{margin:3px 0 0;color:var(--muted);font-size:12px}.online{color:#7ef0c1;font-size:12px}
+button{font:inherit;cursor:pointer;border:0;color:inherit}.iconbtn{background:#ffffff0c;border:1px solid #ffffff1a;border-radius:13px;padding:10px;font-size:18px}
+main{flex:1;overflow:auto;padding:20px 2px 14px;scroll-behavior:smooth}
+.welcome{padding:22px 18px;border:1px solid #8b80ff44;border-radius:24px;background:linear-gradient(135deg,#17234cbb,#291a4bbb);margin-bottom:20px;box-shadow:0 12px 38px #0002}
+.welcome .orb{font-size:32px;margin-bottom:8px}.welcome h2{font-size:23px;margin:0 0 9px}.welcome p{line-height:1.55;color:#d9dcff;margin:0}
+.msg{display:flex;margin:14px 0;gap:9px;align-items:flex-start}.msg.user{justify-content:flex-end}.avatar{width:30px;height:30px;flex:0 0 30px;border-radius:11px;display:grid;place-items:center;background:#242a59;font-size:14px}.bubble{max-width:84%;padding:12px 14px;border-radius:17px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.assistant .bubble{background:#151a37;border:1px solid #33396a;border-top-left-radius:5px}.user .bubble{background:linear-gradient(135deg,#355bd7,#704bd1);border-top-right-radius:5px}
+.composer{padding:12px 0 calc(12px + env(safe-area-inset-bottom));border-top:1px solid #ffffff14;background:linear-gradient(180deg,transparent,#090b1b 20%)}
+.note{font-size:11px;color:var(--muted);text-align:center;margin:0 0 9px}
+.entry{display:flex;gap:8px;align-items:flex-end;padding:8px;border-radius:20px;border:1px solid #424777;background:#10142c;box-shadow:0 0 25px #5441ba1c}
+textarea{flex:1;resize:none;max-height:130px;min-height:42px;background:transparent;color:var(--text);border:0;outline:0;padding:10px 8px;font:inherit}textarea::placeholder{color:#858bb5}
+.send{width:44px;height:44px;border-radius:15px;background:linear-gradient(135deg,#3c83ff,#9259f4);font-size:20px;box-shadow:0 5px 18px #6d5df744}
+.typing{color:var(--muted);font-size:13px;padding:8px 0}
+.overlay{position:fixed;inset:0;background:#0009;display:none;align-items:flex-end;justify-content:center;padding:14px;z-index:5}.overlay.open{display:flex}.sheet{width:min(100%,560px);background:#141832;border:1px solid #373c70;border-radius:24px;padding:20px;max-height:85dvh;overflow:auto}.sheet h2{margin:0 0 8px}.sheet p{color:var(--muted);font-size:13px;line-height:1.5}.sheet label{display:block;font-size:13px;margin:14px 0 6px}.sheet input,.sheet textarea{width:100%;padding:12px;border-radius:12px;background:#090d22;border:1px solid #373c70;color:white;font:inherit}.sheet textarea{min-height:75px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.action{padding:11px 14px;border-radius:12px;background:#292e5a}.primary{background:linear-gradient(135deg,#3c83ff,#9259f4)}.tiny{font-size:11px;color:#9399c2;margin-top:12px}
+@media(min-width:600px){.app{padding-left:22px;padding-right:22px}.welcome{padding:26px}.bubble{max-width:78%}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+ <div class="logo">✦</div>
+ <div class="brand"><h1>Nea AI</h1><p>Sua companheira de ideias</p></div>
+ <span class="online">● pronta</span>
+ <button class="iconbtn" id="settings" aria-label="Configurações">⚙</button>
+</header>
+<main id="chat" aria-live="polite">
+ <section class="welcome" id="welcome"><div class="orb">💙✨</div><h2>Oiii, meu criador!</h2><p>Sou a Nea. Que ideia vamos explorar hoje? Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar. ✨</p></section>
+</main>
+<div class="composer">
+ <p class="note" id="status">As conversas ficam salvas neste aparelho.</p>
+ <form class="entry" id="form"><textarea id="input" rows="1" placeholder="Converse com a Nea..." aria-label="Sua mensagem"></textarea><button class="send" aria-label="Enviar mensagem">↑</button></form>
+</div>
+</div>
+<div class="overlay" id="overlay">
+ <section class="sheet">
+  <h2>⚙️ Configurações da Nea</h2>
+  <p>Esta é a primeira versão da interface. Para conversar com o Gemini, adicione uma chave de API. Para uso pessoal, ela será guardada apenas neste navegador; não publique este app com a chave dentro dele.</p>
+  <label for="apiKey">Chave da API Gemini (opcional)</label><input id="apiKey" type="password" placeholder="Cole sua chave aqui">
+  <label for="memory">Sobre você (memória local opcional)</label><textarea id="memory" placeholder="Ex.: gosto de criar monstros, histórias e ideias..."></textarea>
+  <div class="actions"><button class="action primary" id="save">Salvar configurações</button><button class="action" id="clear">Apagar conversa</button><button class="action" id="close">Fechar</button></div>
+  <p class="tiny">A memória e o histórico desta versão ficam no armazenamento local do navegador, não na nuvem. Não inclua dados sensíveis.</p>
+ </section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const chat=$('chat'), input=$('input');
+let history=JSON.parse(localStorage.getItem('nea_history')||'[]');
+function escapeText(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function addMessage(role,text,save=true){
+ const wrap=document.createElement('div');wrap.className='msg '+(role==='user'?'user':'assistant');
+ if(role!=='user'){const av=document.createElement('div');av.className='avatar';av.textContent='✦';wrap.append(av)}
+ const b=document.createElement('div');b.className='bubble';b.textContent=text;wrap.append(b);
+ if(role==='user'){wrap.append();} chat.append(wrap);chat.scrollTop=chat.scrollHeight;
+ if(save){history.push({role,text});localStorage.setItem('nea_history',JSON.stringify(history));}
+}
+function renderHistory(){history.forEach(m=>addMessage(m.role,m.text,false));}
+renderHistory();
+function localReply(text){
+ const t=text.toLowerCase();
+ if(/quem é você|quem e voce|se apresente|apresente-se/.test(t))return 'Eu sou a Nea, uma inteligência artificial feita para explorar ideias com você, meu criador. 💙 Sou curiosa, acolhedora, esperta e gosto de transformar “e se...?” em possibilidades. Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar. ✨';
+ if(/transmuta|monstro|criatura/.test(t))return 'Aaaah, vamos dar vida a essa ideia! 💙 Podemos desenvolver a aparência, os poderes, a origem e até uma lenda inteira. Qual parte você quer criar primeiro?';
+ if(/oi|olá|ola|e aí|eai/.test(t))return 'Oiii, meu criador! 💙✨ Que bom te ver por aqui. Qual ideia vamos explorar hoje?';
+ return 'Gostei dessa ideia, meu criador! 💙 Quero explorar isso com você. Para eu responder com inteligência artificial de verdade, abra ⚙ e adicione uma chave da API Gemini. Por enquanto, esta versão está funcionando em modo de demonstração.';
+}
+async function send(text){
+ text=text.trim();if(!text)return; $('welcome').style.display='none';addMessage('user',text);input.value='';input.style.height='auto';
+ const key=localStorage.getItem('nea_api_key');
+ if(!key){addMessage('assistant',localReply(text));return}
+ const status=$('status');status.textContent='Nea está pensando…';
+ try{
+  const memory=localStorage.getItem('nea_memory')||'';
+  const contents=[{role:'user',parts:[{text:'Você é Nea, uma IA pessoal inteligente, equilibrada, divertida, acolhedora e espontânea. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar. ✨". Memória local opcional do usuário: '+memory}]},...history.slice(-16).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.text}]}))];
+  contents.push({role:'user',parts:[{text}]});
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents,generationConfig:{temperature:0.85,maxOutputTokens:700}})});
+  const data=await r.json();if(!r.ok)throw new Error(data.error?.message||'Erro na API');
+  const answer=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'Não consegui gerar uma resposta desta vez.';
+  addMessage('assistant',answer);
+ }catch(e){addMessage('assistant','Tive um problema ao falar com o Gemini: '+e.message+'. Confira sua chave de API e a conexão com a internet.');}
+ finally{status.textContent='As conversas ficam salvas neste aparelho.'}
+}
+$('form').addEventListener('submit',e=>{e.preventDefault();send(input.value)});
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,130)+'px'});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('form').requestSubmit()}});
+$('settings').onclick=()=>{$('apiKey').value=localStorage.getItem('nea_api_key')||'';$('memory').value=localStorage.getItem('nea_memory')||'';$('overlay').classList.add('open')};
+$('close').onclick=()=>$('overlay').classList.remove('open');
+$('save').onclick=()=>{localStorage.setItem('nea_api_key',$('apiKey').value.trim());localStorage.setItem('nea_memory',$('memory').value.trim());$('overlay').classList.remove('open');$('status').textContent=$('apiKey').value.trim()?'Gemini configurado neste navegador.':'As conversas ficam salvas neste aparelho.'};
+$('clear').onclick=()=>{if(confirm('Apagar o histórico salvo neste aparelho?')){history=[];localStorage.removeItem('nea_history');document.querySelectorAll('.msg').forEach(n=>n.remove());$('welcome').style.display='block';$('overlay').classList.remove('open')}};
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>
