@@ -1,0 +1,10 @@
+{
+  "name": "Nea AI",
+  "short_name": "Nea AI",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#090b1b",
+  "theme_color": "#10102a",
+  "description": "Sua companheira de ideias",
+  "icons": []
+}
