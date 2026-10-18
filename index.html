@@ -69,6 +69,47 @@ function addMessage(role,text,save=true){
 }
 function renderHistory(){history.forEach(m=>addMessage(m.role,m.text,false));}
 renderHistory();
+async function send(text){
+  text = text.trim();
+  if (!text) return;
+
+  $('welcome').style.display = 'none';
+  addMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+
+  const status = $('status');
+  status.textContent = 'Nea está pensando…';
+
+  try {
+    const messages = history.slice(-20).map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.text
+    }));
+
+    const memory = localStorage.getItem('nea_memory') || '';
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, memory })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Erro ao conectar');
+    }
+
+    addMessage('assistant', data.answer);
+  } catch (error) {
+    addMessage('assistant', 'Não consegui conectar com a inteligência da Nea. Confira a configuração do servidor e tente novamente.');
+    console.error(error);
+  } finally {
+    status.textContent = 'As conversas ficam salvas neste aparelho.';
+  }
+}
+$('form').addEventListener('submit',e=>{e.preventDefault();send(input.value)});
 function localReply(text){
  const t=text.toLowerCase();
  if(/quem é você|quem e voce|se apresente|apresente-se/.test(t))return 'Eu sou a Nea, uma inteligência artificial feita para explorar ideias com você, meu criador. 💙 Sou curiosa, acolhedora, esperta e gosto de transformar “e se...?” em possibilidades. Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar. ✨';
@@ -76,23 +117,6 @@ function localReply(text){
  if(/oi|olá|ola|e aí|eai/.test(t))return 'Oiii, meu criador! 💙✨ Que bom te ver por aqui. Qual ideia vamos explorar hoje?';
  return 'Gostei dessa ideia, meu criador! 💙 Quero explorar isso com você. Para eu responder com inteligência artificial de verdade, abra ⚙ e adicione uma chave da API Gemini. Por enquanto, esta versão está funcionando em modo de demonstração.';
 }
-async function send(text){
- text=text.trim();if(!text)return; $('welcome').style.display='none';addMessage('user',text);input.value='';input.style.height='auto';
- const key=localStorage.getItem('nea_api_key');
- if(!key){addMessage('assistant',localReply(text));return}
- const status=$('status');status.textContent='Nea está pensando…';
- try{
-  const memory=localStorage.getItem('nea_memory')||'';
-  const contents=[{role:'user',parts:[{text:'Você é Nea, uma IA pessoal inteligente, equilibrada, divertida, acolhedora e espontânea. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar. ✨". Memória local opcional do usuário: '+memory}]},...history.slice(-16).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.text}]}))];
-  contents.push({role:'user',parts:[{text}]});
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents,generationConfig:{temperature:0.85,maxOutputTokens:700}})});
-  const data=await r.json();if(!r.ok)throw new Error(data.error?.message||'Erro na API');
-  const answer=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'Não consegui gerar uma resposta desta vez.';
-  addMessage('assistant',answer);
- }catch(e){addMessage('assistant','Tive um problema ao falar com o Gemini: '+e.message+'. Confira sua chave de API e a conexão com a internet.');}
- finally{status.textContent='As conversas ficam salvas neste aparelho.'}
-}
-$('form').addEventListener('submit',e=>{e.preventDefault();send(input.value)});
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,130)+'px'});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('form').requestSubmit()}});
 $('settings').onclick=()=>{$('apiKey').value=localStorage.getItem('nea_api_key')||'';$('memory').value=localStorage.getItem('nea_memory')||'';$('overlay').classList.add('open')};
