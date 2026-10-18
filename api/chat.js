@@ -13,15 +13,39 @@ export default async function handler(req, res) {
       error: "A chave da OpenAI não está configurada no servidor."
     });
   }
+const contentLength = Number(req.headers["content-length"] || 0);
 
+if (contentLength > 20000) {
+  return res.status(413).json({
+    error: "Mensagem muito grande. Envie um texto menor."
+  });
+}
   try {
-    const { messages, memory } = req.body || {};
+    
+const { messages, memory } = req.body || {};
 
-    if (!Array.isArray(messages)) {
-      return res.status(400).json({
-        error: "Mensagens inválidas."
-      });
-    }
+if (
+  !Array.isArray(messages) ||
+  messages.length === 0 ||
+  messages.length > 20
+) {
+  return res.status(400).json({
+    error: "Envie entre 1 e 20 mensagens."
+  });
+}
+
+for (const message of messages) {
+  if (
+    !message ||
+    typeof message.content !== "string" ||
+    message.content.length > 4000
+  ) {
+    return res.status(400).json({
+      error: "Uma das mensagens é inválida ou muito grande."
+    });
+  }
+}
+
 
     const response = await fetch(
       "https://api.openai.com/v1/chat/completions",
@@ -45,7 +69,7 @@ export default async function handler(req, res) {
             },
             ...messages.slice(-20).map((m) => ({
               role: m.role === "assistant" ? "assistant" : "user",
-              content: String(m.content || "").slice(0, 10000)
+              content: String(m.content || "").slice(0, 4000)
             }))
           ],
           temperature: 0.85,
