@@ -1,15 +1,14 @@
 
 export default async function handler(req, res) {
-  const allowedOrigin =
-    "https://victordeodiro-ship-it.github.io";
+  const allowedOrigins = [
+    "https://victordeodiro-ship-it.github.io",
+    "https://nea-ai.vercel.app"
+  ];
 
   const origin = req.headers.origin;
 
-  if (origin === allowedOrigin) {
-    res.setHeader(
-      "Access-Control-Allow-Origin",
-      allowedOrigin
-    );
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader(
       "Access-Control-Allow-Methods",
@@ -22,10 +21,14 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "OPTIONS") {
+    if (origin && !allowedOrigins.includes(origin)) {
+      return res.status(403).end();
+    }
+
     return res.status(204).end();
   }
 
-  if (origin && origin !== allowedOrigin) {
+  if (origin && !allowedOrigins.includes(origin)) {
     return res.status(403).json({
       error: "Origem não autorizada."
     });
