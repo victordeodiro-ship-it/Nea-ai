@@ -24,16 +24,15 @@ function identificarIntencao(texto) {
 }
 
 export default async function handler(req, res) {
-  const allowedOrigin =
-    "https://victordeodiro-ship-it.github.io";
+  const allowedOrigins = [
+    "https://victordeodiro-ship-it.github.io",
+    "https://nea-ai.vercel.app"
+  ];
 
   const origin = req.headers.origin;
 
-  if (origin === allowedOrigin) {
-    res.setHeader(
-      "Access-Control-Allow-Origin",
-      allowedOrigin
-    );
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader(
       "Access-Control-Allow-Methods",
@@ -46,10 +45,14 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "OPTIONS") {
+    if (origin && !allowedOrigins.includes(origin)) {
+      return res.status(403).end();
+    }
+
     return res.status(204).end();
   }
 
-  if (origin && origin !== allowedOrigin) {
+  if (origin && !allowedOrigins.includes(origin)) {
     return res.status(403).json({
       error: "Origem não autorizada."
     });
@@ -65,8 +68,7 @@ export default async function handler(req, res) {
 
   if (!apiKey) {
     return res.status(500).json({
-      error:
-        "A chave do Ollama não está configurada no servidor."
+      error: "A chave do Ollama não está configurada no servidor."
     });
   }
 
@@ -90,8 +92,7 @@ export default async function handler(req, res) {
         message.content.length > 4000
       ) {
         return res.status(400).json({
-          error:
-            "Uma das mensagens é inválida ou muito grande."
+          error: "Uma das mensagens é inválida ou muito grande."
         });
       }
     }
@@ -154,25 +155,20 @@ export default async function handler(req, res) {
       );
 
       return res.status(502).json({
-        error:
-          "Não foi possível obter uma resposta da IA."
+        error: "Não foi possível obter uma resposta da IA."
       });
     }
 
     return res.status(200).json({
-      answer:
+      reply:
         data.choices?.[0]?.message?.content ||
         "Não consegui gerar uma resposta desta vez."
     });
   } catch (error) {
-    console.error(
-      "Erro no backend:",
-      error.message
-    );
+    console.error("Erro no backend:", error.message);
 
     return res.status(500).json({
-      error:
-        "Ocorreu um erro ao conversar com a Nea."
+      error: "Ocorreu um erro ao conversar com a Nea."
     });
   }
 }
