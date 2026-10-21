@@ -3,80 +3,95 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
-    return res.status(405).json({
-      error: "Use o método POST."
-    });
+    return res.status(405).json({ error: "Use POST." });
   }
 
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const { OLLAMA_API_KEY } = process.env;
 
-  if (!accountId || !apiToken) {
+  if (!OLLAMA_API_KEY) {
     return res.status(503).json({
-      error: "A integração de dispositivos ainda não está configurada."
+      error: "O Ollama não está configurado."
     });
   }
 
-  const { deviceId, action } = req.body || {};
+  const { command } = req.body || {};
 
   if (
-    typeof deviceId !== "string" ||
-    !deviceId.trim() ||
-    typeof action !== "string" ||
-    !action.trim()
+    typeof command !== "string" ||
+    !command.trim() ||
+    command.length > 1000
   ) {
     return res.status(400).json({
-      error: "Informe um 'deviceId' e uma 'action' válidos."
+      error: "Informe um comando de até 1000 caracteres."
     });
   }
 
   try {
-    // Exemplo de endpoint para comunicação ou IA aplicada a dispositivos
-    const endpoint =
-      `https://api.cloudflare.com/client/v4/accounts/` +
-      `${accountId}/ai/run/@cf/meta/llama-3-8b-instruct`;
+    const response = await fetch(
+      "https://ollama.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OLLAMA_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL || "gpt-oss:20b-cloud",
+          messages: [
+            {
+              role: "system",
+              content:
+                'Classifique o pedido para controlar uma luz. Responda apenas JSON: {"action":"turn_on"}, {"action":"turn_off"} ou {"action":"unsupported"}. Ligar/acender significa turn_on; desligar/apagar significa turn_off.'
+            },
+            { role: "user", content: command.trim() }
+          ],
+          stream: false,
+          temperature: 0,
+          max_tokens: 80
+        }),
+        signal: AbortSignal.timeout(15000)
+      }
+    );
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        prompt: `Dispositivo: ${deviceId}, Ação solicitada: ${action}`
-      })
-    });
+    if (!response.ok) {
+      return res.status(502).json({
+        error: "Não foi possível interpretar o comando."
+      });
+    }
 
     const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || "";
+    const json = text.match(/\{[\s\S]*\}/)?.[0];
 
-    if (!response.ok || !data.success) {
-      console.error(
-        "Falha no processamento do dispositivo:",
-        response.status
-      );
-
-      return res.status(502).json({
-        error: "A Cloudflare não conseguiu processar o comando do dispositivo."
+    let decision;
+    try {
+      decision = JSON.parse(json);
+    } catch {
+      return res.status(422).json({
+        error: "O comando não pôde ser interpretado com segurança."
       });
     }
 
-    const result = data.result?.response || data.result;
-
-    if (!result) {
-      return res.status(502).json({
-        error: "A API não retornou uma resposta válida para o dispositivo."
+    if (!["turn_on", "turn_off"].includes(decision.action)) {
+      return res.status(400).json({
+        error: "Comando não suportado."
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      result
+    // Não executar ações físicas sem autenticação de usuário
+    // e confirmação verificadas no servidor.
+    return res.status(501).json({
+      ready: false,
+      action: decision.action,
+      requiresAuthentication: true,
+      requiresConfirmation: true,
+      message:
+        "Comando reconhecido, mas o controle está desativado até a configuração de autenticação e confirmação seguras."
     });
   } catch (error) {
-    console.error("Erro na integração de dispositivos:", error.message);
-
+    console.error("devices.js:", error.message);
     return res.status(502).json({
-      error: "Não foi possível conectar ao serviço de dispositivos."
+      error: "Falha ao interpretar o comando."
     });
   }
 }
