@@ -81,7 +81,46 @@ export default async function handler(req, res) {
 
     console.log("Intenção identificada:", intencao);
     const systemPrompt =
-      'Você é Nea, uma IA pessoal inteligente, acolhedora, espontânea e criativa. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar."' +
+      
+  try {
+    const { messages, memory } = req.body || {};
+
+    // Verifica se a lista de mensagens é válida.
+    if (
+      !Array.isArray(messages) ||
+      messages.length === 0 ||
+      messages.length > 20
+    ) {
+      return res.status(400).json({
+        error: "Envie entre 1 e 20 mensagens."
+      });
+    }
+
+    // Verifica o conteúdo de cada mensagem.
+    for (const message of messages) {
+      if (
+        !message ||
+        typeof message.content !== "string" ||
+        message.content.length > 4000
+      ) {
+        return res.status(400).json({
+          error: "Uma das mensagens é inválida ou muito grande."
+        });
+      }
+    }
+
+    // Identifica a intenção da última mensagem.
+    const ultimaMensagem = messages[messages.length - 1];
+
+    const intencao = identificarIntencao(
+      ultimaMensagem.content
+    );
+
+    console.log("Intenção identificada:", intencao);
+
+    const systemPrompt =
+
+     'Você é Nea, uma IA pessoal inteligente, acolhedora, espontânea e criativa. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar."' +
       (typeof memory === "string"
         ? "\nMemória opcional do usuário: " + memory.slice(0, 2000)
         : "");
