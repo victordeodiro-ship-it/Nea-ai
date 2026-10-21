@@ -1,10 +1,9 @@
 
-export default async function handler(req, res) {
-  function identificarIntencao(texto) {
+function identificarIntencao(texto) {
   const mensagem = texto.toLowerCase();
 
   if (
-    /\b(apague|apaga|acenda|acenda|ligue|liga|desligue|desliga)\b.*\b(luz|lâmpada|ar-condicionado|dispositivo)\b/i.test(mensagem)
+    /\b(apague|apaga|acenda|acender|ligue|liga|desligue|desliga)\b.*\b(luz|lâmpada|ar-condicionado|dispositivo)\b/i.test(mensagem)
   ) {
     return "dispositivo";
   }
@@ -22,20 +21,30 @@ export default async function handler(req, res) {
   }
 
   return "conversa";
-  }
+}
+
+export default async function handler(req, res) {
   const allowedOrigin =
     "https://victordeodiro-ship-it.github.io";
 
   const origin = req.headers.origin;
 
   if (origin === allowedOrigin) {
-    res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      allowedOrigin
+    );
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "POST, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type"
+    );
   }
 
-  // O navegador pode verificar as permissões antes do POST.
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
@@ -56,36 +65,14 @@ export default async function handler(req, res) {
 
   if (!apiKey) {
     return res.status(500).json({
-      error: "A chave do Ollama não está configurada no servidor."
+      error:
+        "A chave do Ollama não está configurada no servidor."
     });
   }
 
   try {
     const { messages, memory } = req.body || {};
-    for (const message of messages) {
-      if (
-        !message ||
-        typeof message.content !== "string" ||
-        message.content.length > 4000
-      ) {
-        return res.status(400).json({
-          error: "Uma das mensagens é inválida ou muito grande."
-        });
-      }
-    }
-    const ultimaMensagem = messages[messages.length - 1];
 
-    const intencao = identificarIntencao(
-      ultimaMensagem.content
-    );
-
-    console.log("Intenção identificada:", intencao);
-    const systemPrompt =
-      
-  try {
-    const { messages, memory } = req.body || {};
-
-    // Verifica se a lista de mensagens é válida.
     if (
       !Array.isArray(messages) ||
       messages.length === 0 ||
@@ -96,7 +83,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Verifica o conteúdo de cada mensagem.
     for (const message of messages) {
       if (
         !message ||
@@ -104,14 +90,13 @@ export default async function handler(req, res) {
         message.content.length > 4000
       ) {
         return res.status(400).json({
-          error: "Uma das mensagens é inválida ou muito grande."
+          error:
+            "Uma das mensagens é inválida ou muito grande."
         });
       }
     }
 
-    // Identifica a intenção da última mensagem.
     const ultimaMensagem = messages[messages.length - 1];
-
     const intencao = identificarIntencao(
       ultimaMensagem.content
     );
@@ -119,10 +104,10 @@ export default async function handler(req, res) {
     console.log("Intenção identificada:", intencao);
 
     const systemPrompt =
-
-     'Você é Nea, uma IA pessoal inteligente, acolhedora, espontânea e criativa. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar."' +
+      'Você é Nea, uma IA pessoal inteligente, acolhedora, espontânea e criativa. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar."' +
       (typeof memory === "string"
-        ? "\nMemória opcional do usuário: " + memory.slice(0, 2000)
+        ? "\nMemória opcional do usuário: " +
+          memory.slice(0, 2000)
         : "");
 
     const response = await fetch(
@@ -134,11 +119,19 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: process.env.OLLAMA_MODEL || "gpt-oss:20b-cloud",
+          model:
+            process.env.OLLAMA_MODEL ||
+            "gpt-oss:20b-cloud",
           messages: [
-            { role: "system", content: systemPrompt },
+            {
+              role: "system",
+              content: systemPrompt
+            },
             ...messages.slice(-20).map((m) => ({
-              role: m.role === "assistant" ? "assistant" : "user",
+              role:
+                m.role === "assistant"
+                  ? "assistant"
+                  : "user",
               content: m.content.slice(0, 4000)
             }))
           ],
@@ -155,11 +148,14 @@ export default async function handler(req, res) {
       console.error(
         "Erro da API Ollama:",
         response.status,
-        data.error?.message || data.error || "Erro desconhecido"
+        data.error?.message ||
+          data.error ||
+          "Erro desconhecido"
       );
 
       return res.status(502).json({
-        error: "Não foi possível obter uma resposta da IA."
+        error:
+          "Não foi possível obter uma resposta da IA."
       });
     }
 
@@ -169,10 +165,14 @@ export default async function handler(req, res) {
         "Não consegui gerar uma resposta desta vez."
     });
   } catch (error) {
-    console.error("Erro no backend:", error.message);
+    console.error(
+      "Erro no backend:",
+      error.message
+    );
 
     return res.status(500).json({
-      error: "Ocorreu um erro ao conversar com a Nea."
+      error:
+        "Ocorreu um erro ao conversar com a Nea."
     });
   }
 }
