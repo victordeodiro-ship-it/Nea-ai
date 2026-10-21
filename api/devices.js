@@ -8,99 +8,75 @@ export default async function handler(req, res) {
     });
   }
 
-  // Apenas a URL e o Token ficam nas variáveis globais
-  const haUrl = process.env.HOME_ASSISTANT_URL;
-  const haToken = process.env.HOME_ASSISTANT_TOKEN;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
-  if (!haUrl || !haToken) {
+  if (!accountId || !apiToken) {
     return res.status(503).json({
-      error: "Configure HOME_ASSISTANT_URL e HOME_ASSISTANT_TOKEN nas variáveis da Vercel."
+      error: "A integração de dispositivos ainda não está configurada."
     });
   }
 
-  // Recebe o domínio, entidade e ação dinamicamente do site
-  const { domain, entity_id, action } = req.body || {};
+  const { deviceId, action } = req.body || {};
 
-  if (!domain || !entity_id || !action) {
+  if (
+    typeof deviceId !== "string" ||
+    !deviceId.trim() ||
+    typeof action !== "string" ||
+    !action.trim()
+  ) {
     return res.status(400).json({
-      error: "Parâmetros ausentes. Envie 'domain', 'entity_id' e 'action'."
-    });
-  }
-
-  // Mapeamento das ações recebidas para as rotas do Home Assistant
-  const servicesMap = {
-    ligar: "turn_on",
-    desligar: "turn_off",
-    alternar: "toggle",
-    turn_on: "turn_on",
-    turn_off: "turn_off",
-    toggle: "toggle"
-  };
-
-  const service = servicesMap[action.toLowerCase()];
-
-  if (!service) {
-    return res.status(400).json({
-      error: "Ação inválida. Use 'ligar', 'desligar' ou 'alternar'."
+      error: "Informe um 'deviceId' e uma 'action' válidos."
     });
   }
 
   try {
-    const baseUrl = haUrl.replace(/\/+$/, "");
+    // Exemplo de endpoint para comunicação ou IA aplicada a dispositivos
+    const endpoint =
+      `https://api.cloudflare.com/client/v4/accounts/` +
+      `${accountId}/ai/run/@cf/meta/llama-3-8b-instruct`;
 
-    // Rota dinâmica: /api/services/{domain}/{service}
-    const response = await fetch(
-      `${baseUrl}/api/services/${domain}/${service}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${haToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          entity_id: entity_id
-        })
-      }
-    );
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        prompt: `Dispositivo: ${deviceId}, Ação solicitada: ${action}`
+      })
+    });
 
-    if (!response.ok) {
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
       console.error(
-        "Home Assistant retornou status:",
+        "Falha no processamento do dispositivo:",
         response.status
       );
 
       return res.status(502).json({
-        error: `Não foi possível controlar o dispositivo ${entity_id}.`
+        error: "A Cloudflare não conseguiu processar o comando do dispositivo."
+      });
+    }
+
+    const result = data.result?.response || data.result;
+
+    if (!result) {
+      return res.status(502).json({
+        error: "A API não retornou uma resposta válida para o dispositivo."
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: `Comando '${service}' enviado com sucesso para ${entity_id}.`
+      result
     });
   } catch (error) {
-    console.error("Erro na integração:", error.message);
+    console.error("Erro na integração de dispositivos:", error.message);
 
     return res.status(502).json({
-      error: "Não foi possível conectar ao Home Assistant."
+      error: "Não foi possível conectar ao serviço de dispositivos."
     });
   }
 }
-fetch('/api/home-assistant', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    domain: 'switch',
-    entity_id: 'switch.tomada_cafeteira',
-    action: 'desligar'
-  })
-});
-fetch('/api/home-assistant', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    domain: 'automation',
-    entity_id: 'automation.modo_cinema',
-    action: 'turn_on'
-  })
-});
