@@ -92,7 +92,13 @@ console.log("Intenção identificada:", intencao);
         });
       }
     }
+    const ultimaMensagem = messages[messages.length - 1];
 
+    const intencao = identificarIntencao(
+      ultimaMensagem.content
+    );
+
+    console.log("Intenção identificada:", intencao);
     const systemPrompt =
       'Você é Nea, uma IA pessoal inteligente, acolhedora, espontânea e criativa. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar."' +
       (typeof memory === "string"
