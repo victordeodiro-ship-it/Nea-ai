@@ -1,5 +1,28 @@
 
 export default async function handler(req, res) {
+  const allowedOrigin =
+    "https://victordeodiro-ship-it.github.io";
+
+  const origin = req.headers.origin;
+
+  if (origin === allowedOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+
+  // O navegador pode verificar as permissões antes do POST.
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (origin && origin !== allowedOrigin) {
+    return res.status(403).json({
+      error: "Origem não autorizada."
+    });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Método não permitido."
@@ -11,16 +34,6 @@ export default async function handler(req, res) {
   if (!apiKey) {
     return res.status(500).json({
       error: "A chave do Ollama não está configurada no servidor."
-    });
-  }
-
-  const contentLength = Number(
-    req.headers["content-length"] || 0
-  );
-
-  if (contentLength > 20000) {
-    return res.status(413).json({
-      error: "Mensagem muito grande. Envie um texto menor."
     });
   }
 
@@ -52,8 +65,7 @@ export default async function handler(req, res) {
     const systemPrompt =
       'Você é Nea, uma IA pessoal inteligente, acolhedora, espontânea e criativa. Chame o usuário de "meu criador" naturalmente, sem exagerar. Sua frase especial é: "Uma ideia puxa outra. Vamos descobrir até onde a nossa pode chegar."' +
       (typeof memory === "string"
-        ? "\nMemória opcional do usuário: " +
-          memory.slice(0, 2000)
+        ? "\nMemória opcional do usuário: " + memory.slice(0, 2000)
         : "");
 
     const response = await fetch(
@@ -62,22 +74,14 @@ export default async function handler(req, res) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+          Authorization: `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model:
-            process.env.OLLAMA_MODEL ||
-            "gpt-oss:20b-cloud",
+          model: process.env.OLLAMA_MODEL || "gpt-oss:20b-cloud",
           messages: [
-            {
-              role: "system",
-              content: systemPrompt
-            },
+            { role: "system", content: systemPrompt },
             ...messages.slice(-20).map((m) => ({
-              role:
-                m.role === "assistant"
-                  ? "assistant"
-                  : "user",
+              role: m.role === "assistant" ? "assistant" : "user",
               content: m.content.slice(0, 4000)
             }))
           ],
@@ -108,10 +112,7 @@ export default async function handler(req, res) {
         "Não consegui gerar uma resposta desta vez."
     });
   } catch (error) {
-    console.error(
-      "Erro no backend:",
-      error.message
-    );
+    console.error("Erro no backend:", error.message);
 
     return res.status(500).json({
       error: "Ocorreu um erro ao conversar com a Nea."
