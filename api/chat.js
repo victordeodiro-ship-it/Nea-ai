@@ -61,8 +61,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { messages, memory } = req.body || {};
+    const { messages, memory } = req.body || {}
+    const ultimaMensagem = messages?.[messages.length - 1];
 
+const intencao = identificarIntencao(
+  typeof ultimaMensagem?.content === "string"
+    ? ultimaMensagem.content
+    : ""
+);
+
+console.log("Intenção identificada:", intencao);
     if (
       !Array.isArray(messages) ||
       messages.length === 0 ||
