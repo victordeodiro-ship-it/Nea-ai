@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   if (!accountId || !apiToken) {
     return res.status(503).json({
-      error: "A integração de imagens ainda não está configurada."
+      error: "A integração de imagens não está configurada."
     });
   }
 
@@ -32,8 +32,8 @@ export default async function handler(req, res) {
 
   try {
     const endpoint =
-      `https://api.cloudflare.com/client/v4/accounts/` +
-      `${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}` +
+      `/ai/run/@cf/black-forest-labs/flux-1-schnell`;
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -43,37 +43,47 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         prompt: prompt.trim(),
-        steps: 4
+        seed: Math.floor(Math.random() * 2147483647)
       })
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    let imageBase64;
 
-    if (!response.ok || !data.success) {
-      console.error(
-        "Falha na geração de imagem:",
-        response.status
-      );
+    if (contentType.includes("application/json")) {
+      const data = await response.json();
 
+      if (!response.ok || data.success === false) {
+        console.error("Erro Cloudflare:", response.status);
+        return res.status(502).json({
+          error: "A Cloudflare não conseguiu gerar a imagem."
+        });
+      }
+
+      imageBase64 = data.result?.image;
+    } else if (response.ok) {
+      const bytes = Buffer.from(await response.arrayBuffer());
+      imageBase64 = bytes.toString("base64");
+    }
+
+    if (!response.ok) {
+      console.error("Erro Cloudflare:", response.status);
       return res.status(502).json({
-        error: "A Cloudflare não conseguiu gerar a imagem."
+        error: "Falha ao solicitar a geração de imagem."
       });
     }
 
-    const image = data.result?.image;
-
-    if (!image) {
+    if (!imageBase64) {
       return res.status(502).json({
-        error: "A API não retornou uma imagem."
+        error: "A resposta não continha uma imagem reconhecível."
       });
     }
 
     return res.status(200).json({
-      image: `data:image/jpeg;base64,${image}`
+      image: `data:image/jpeg;base64,${imageBase64}`
     });
   } catch (error) {
     console.error("Erro na integração de imagens:", error.message);
-
     return res.status(502).json({
       error: "Não foi possível conectar ao serviço de imagens."
     });
