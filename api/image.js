@@ -84,9 +84,19 @@ export default async function handler(req, res) {
         details.slice(0, 500)
       );
 
+      // Diagnóstico temporário: não inclui o token.
+      // O detalhe pode ficar visível publicamente.
+      let safeDetail = details
+        .replace(/Bearer\s+\S+/gi, "Bearer [oculto]")
+        .replace(/hf_[A-Za-z0-9]+/g, "[token oculto]")
+        .slice(0, 200);
+
       return res.status(502).json({
         error:
-          "O serviço de imagens não conseguiu gerar a imagem. Tente novamente mais tarde."
+          "Falha no Hugging Face (HTTP " +
+          response.status +
+          "): " +
+          safeDetail
       });
     }
 
