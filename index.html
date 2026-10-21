@@ -347,14 +347,7 @@ function clearHistory() {
 function saveSettings() {
   localStorage.setItem('nea_name', $('assistantName').value.trim() || 'Nea');
   localStorage.setItem('nea_personality', $('personality').value);
-  alert('Preferências salvas neste aparelho.');
-}
-function prepareMedia() {
-  const prompt = $('mediaPrompt').value.trim();
-  if (!prompt) {
-    $('mediaStatus').textContent = 'Escreva uma descrição primeiro.';
-    return;
-  }
+  alert('Preferências salvas n
   $('mediaStatus').textContent =
     'Descrição preparada (' + $('mediaType').value.toLowerCase() +
     '). A geração real ainda precisa de uma integração com um serviço de mídia.';
