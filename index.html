@@ -1,291 +1,301 @@
-
-<script>
-const $ = id => document.getElementById(id);
-const API_URL = 'https://nea-ai.vercel.app/api/chat';
-
-let history = [];
-
-try {
-  history = JSON.parse(localStorage.getItem('nea_history') || '[]');
-  if (!Array.isArray(history)) history = [];
-} catch {
-  history = [];
-}
-
-let busy = false;
-
-function saveHistory() {
-  localStorage.setItem('nea_history', JSON.stringify(history));
-}
-
-function showTab(name) {
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-  const target = $('tab-' + name);
-  if (target) target.classList.add('active');
-  closeSidebar();
-  if (name === 'conversas') renderHistoryList();
-  window.scrollTo(0, 0);
-}
-
-function openSidebar() {
-  $('sidebar').classList.add('open');
-  $('overlay').classList.add('open');
-}
-
-function closeSidebar() {
-  $('sidebar').classList.remove('open');
-  $('overlay').classList.remove('open');
-}
-
-$('openMenu').addEventListener('click', openSidebar);
-$('closeMenu').addEventListener('click', closeSidebar);
-$('overlay').addEventListener('click', closeSidebar);
-
-function addBubble(role, text) {
-  const wrap = document.createElement('div');
-  wrap.className = 'msg ' + (role === 'user' ? 'user' : 'assistant');
-
-  if (role !== 'user') {
-    const avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = 'N';
-    wrap.appendChild(avatar);
-  }
-
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
-  $('chat').appendChild(wrap);
-  $('chat').scrollIntoView({ behavior: 'smooth', block: 'end' });
-}
-
-function renderChat() {
-  $('chat').replaceChildren();
-  history.forEach(m => addBubble(m.role, m.text));
-}
-
-function renderHistoryList() {
-  const list = $('historyList');
-  list.replaceChildren();
-
-  if (!history.length) {
-    list.textContent = 'Você ainda não tem mensagens salvas.';
-    return;
-  }
-
-  history.slice(-30).reverse().forEach(m => {
-    const p = document.createElement('p');
-    p.className = 'muted';
-    p.textContent = (m.role === 'user' ? 'Você: ' : 'Nea: ') + m.text;
-    list.appendChild(p);
-  });
-}
-
-async function sendMessage(text) {
-  text = text.trim();
-  if (!text || busy) return;
-
-  busy = true;
-  $('sendBtn').disabled = true;
-  $('status').textContent = 'Nea está pensando…';
-
-  history.push({ role: 'user', text });
-  saveHistory();
-  addBubble('user', text);
-  $('messageInput').value = '';
-
-  const typing = document.createElement('p');
-  typing.className = 'muted';
-  typing.textContent = 'Nea está pensando…';
-  $('chat').appendChild(typing);
-
-  try {
-    const messages = history.slice(-20).map(m => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.text
-    }));
-
-    const memory = localStorage.getItem('nea_memory') || '';
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, memory })
-    });
-
-    let data = {};
-    try {
-      data = await response.json();
-    } catch {}
-
-    if (!response.ok) {
-      throw new Error(data.error || ('Erro HTTP ' + response.status));
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nea IA — Sua Inteligência Pessoal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #0b0a12;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    .bg-gradient-radial {
+      background: radial-gradient(circle at 50% 15%, rgba(67, 43, 107, 0.45) 0%, rgba(18, 12, 33, 0.8) 45%, rgba(11, 10, 18, 1) 100%);
     }
 
-    const answer = data.answer || data.response || data.message;
-
-    if (typeof answer !== 'string' || !answer.trim()) {
-      throw new Error('O servidor não retornou uma resposta reconhecida.');
+    .card-dark {
+      background: rgba(18, 18, 28, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    typing.remove();
-    history.push({ role: 'assistant', text: answer });
-    saveHistory();
-    addBubble('assistant', answer);
-  } catch (err) {
-    typing.remove();
-    console.error('Erro da Nea:', err);
+    .input-box {
+      background: rgba(18, 18, 28, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
 
-    addBubble(
-      'assistant',
-      'Não consegui conectar ao servidor agora. Verifique a Vercel e tente novamente.'
-    );
-  } finally {
-    busy = false;
-    $('sendBtn').disabled = false;
-    $('status').textContent = 'Pronta para conversar';
-    renderHistoryList();
-  }
-}
+    .input-box:focus-within {
+      border-color: rgba(168, 85, 247, 0.5);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.15);
+    }
 
-$('chatForm').addEventListener('submit', e => {
-  e.preventDefault();
-  sendMessage($('messageInput').value);
-});
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
 
-$('messageInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    $('chatForm').requestSubmit();
-  }
-});
+    .sidebar-overlay {
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="bg-gradient-radial min-h-screen relative pb-12">
 
-function suggest(text) {
-  showTab('inicio');
-  $('messageInput').value = text;
-  $('messageInput').focus();
-}
+  <!-- CABEÇALHO SUPERIOR (HEADER FIXO) -->
+  <header class="w-full px-4 py-3 flex justify-between items-center border-b border-white/5 sticky top-0 bg-[#0b0a12]/80 backdrop-blur-md z-30">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="showTab('inicio')">
+      <div class="w-9 h-9 rounded-full bg-[#0f111a] border border-indigo-500/40 flex items-center justify-center shadow-lg">
+        <span class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">N</span>
+      </div>
+      <span class="font-semibold text-sm tracking-wide">Nea <span class="text-xs text-gray-400 font-normal">IA</span></span>
+    </div>
 
-function newChat() {
-  history = [];
-  saveHistory();
-  $('chat').replaceChildren();
-  $('messageInput').value = '';
-  showTab('inicio');
-}
+    <!-- Botão de 3 barrinhas (Menu Hambúrguer) -->
+    <button id="openMenuBtn" class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition">
+      <i class="fa-solid fa-bars text-lg"></i>
+    </button>
+  </header>
 
-function saveMemory() {
-  localStorage.setItem('nea_memory', $('memoryInput').value.trim());
-  $('memoryStatus').textContent = 'Memória salva neste aparelho.';
-}
+  <!-- MENU LATERAL (SIDEBAR DRAWER) -->
+  <div id="sidebarOverlay" class="fixed inset-0 sidebar-overlay z-40 hidden transition-opacity"></div>
+  
+  <aside id="sidebar" class="fixed top-0 left-0 h-full w-80 bg-[#0d0c16] border-r border-white/10 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between p-4">
+    <div>
+      <div class="flex justify-between items-center mb-6 pt-2">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-[#0f111a] border border-indigo-500/40 flex items-center justify-center">
+            <span class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">N</span>
+          </div>
+          <span class="font-semibold text-sm">Nea IA</span>
+        </div>
+        <button id="closeMenuBtn" class="text-gray-400 hover:text-white p-2">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
 
-function clearMemory() {
-  if (confirm('Apagar a memória salva neste aparelho?')) {
-    localStorage.removeItem('nea_memory');
-    $('memoryInput').value = '';
-    $('memoryStatus').textContent = 'Memória apagada.';
-  }
-}
+      <button onclick="showTab('inicio'); closeSidebar();" class="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium text-xs flex items-center gap-2 mb-6 shadow-lg shadow-purple-900/30">
+        <i class="fa-solid fa-plus text-xs"></i>
+        Nova conversa
+      </button>
 
-function clearHistory() {
-  if (confirm('Apagar todas as mensagens salvas neste aparelho?')) {
-    history = [];
-    saveHistory();
-    renderChat();
-    renderHistoryList();
-  }
-}
+      <nav class="space-y-1">
+        <button onclick="showTab('conversas'); closeSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-gray-300 hover:bg-white/5 transition">
+          <i class="fa-regular fa-comments text-base w-5 text-center text-purple-400"></i>
+          Conversas
+        </button>
+        <button onclick="showTab('estudio'); closeSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-gray-300 hover:bg-white/5 transition">
+          <i class="fa-regular fa-image text-base w-5 text-center text-indigo-400"></i>
+          Estúdio
+        </button>
+        <button onclick="showTab('memoria'); closeSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-gray-300 hover:bg-white/5 transition">
+          <i class="fa-solid fa-brain text-base w-5 text-center text-cyan-400"></i>
+          Memória
+        </button>
+        <button onclick="showTab('ajustes'); closeSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-gray-300 hover:bg-white/5 transition">
+          <i class="fa-solid fa-sliders text-base w-5 text-center text-pink-400"></i>
+          Ajustes
+        </button>
+      </nav>
+    </div>
 
-function saveSettings() {
-  localStorage.setItem(
-    'nea_name',
-    $('assistantName').value.trim() || 'Nea'
-  );
+    <div class="pt-4 border-t border-white/5">
+      <div class="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-400 flex items-center justify-center font-bold text-xs">
+          VD
+        </div>
+        <div class="overflow-hidden">
+          <h4 class="text-xs font-semibold truncate">Victor Deodiro</h4>
+          <p class="text-[10px] text-gray-400 truncate">victordeodiro@gmail.com</p>
+        </div>
+      </div>
+    </div>
+  </aside>
 
-  localStorage.setItem('nea_personality', $('personality').value);
-  alert('Preferências salvas na Nea IA! 💙');
-}
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="max-w-md mx-auto px-4 pt-6">
 
-async function prepareMedia() {
-  const prompt = $('mediaPrompt').value.trim();
-  const tipo = $('mediaType').value.toLowerCase();
-  const status = $('mediaStatus');
+    <!-- 1. INÍCIO -->
+    <section id="tab-inicio" class="tab-content flex flex-col items-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-purple-300 font-medium tracking-wide mb-6">
+        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+        <span>INTELIGÊNCIA PESSOAL</span>
+      </div>
 
-  if (!prompt) {
-    status.textContent = 'Escreva uma descrição primeiro.';
-    return;
-  }
+      <div class="w-24 h-24 rounded-3xl bg-[#0f111a] border border-indigo-500/30 flex items-center justify-center shadow-2xl mb-5 relative overflow-hidden">
+        <span class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">N</span>
+      </div>
 
-  if (tipo === 'vídeo') {
-    status.textContent =
-      'A geração de vídeos ainda será conectada. Vamos testar as imagens primeiro.';
-    return;
-  }
+      <h1 class="text-2xl font-bold text-center mb-2">
+        Olá, eu sou a <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">Nea.</span>
+      </h1>
 
-  let resultado = $('mediaResult');
+      <p class="text-gray-400 text-center text-xs leading-relaxed mb-6 px-2">
+        Sua inteligência artificial pessoal. Converse, aprenda, escreva, crie imagens e vídeos.
+      </p>
 
-  if (!resultado) {
-    resultado = document.createElement('div');
-    resultado.id = 'mediaResult';
-    status.insertAdjacentElement('afterend', resultado);
-  }
+      <div class="w-full input-box rounded-2xl p-3 mb-4">
+        <textarea rows="2" placeholder="Pergunte qualquer coisa à Nea..." class="w-full bg-transparent text-xs text-gray-200 placeholder-gray-500 focus:outline-none resize-none"></textarea>
+      </div>
 
-  resultado.replaceChildren();
-  status.textContent = 'A Nea está tentando criar sua imagem…';
+      <div class="w-full flex flex-wrap justify-center gap-2 mb-8">
+        <button onclick="showTab('estudio')" class="action-btn text-xs font-medium text-gray-300 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+          <i class="fa-regular fa-image text-purple-400"></i> Criar imagem
+        </button>
+        <button onclick="showTab('estudio')" class="action-btn text-xs font-medium text-gray-300 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+          <i class="fa-solid fa-clapperboard text-indigo-400"></i> Criar vídeo
+        </button>
+      </div>
+    </section>
 
-  try {
-    const response = await fetch(
-      'https://nea-ai.vercel.app/api/image',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+    <!-- 2. CONVERSAS -->
+    <section id="tab-conversas" class="tab-content hidden">
+      <h1 class="text-2xl font-bold mb-1">Conversas</h1>
+      <p class="text-xs text-gray-400 mb-5">Tudo o que você e a Nea conversaram.</p>
+    </section>
+
+    <!-- 3. ESTÚDIO (IMAGENS E VÍDEOS) -->
+    <section id="tab-estudio" class="tab-content hidden">
+      <h1 class="text-2xl font-bold mb-1">Estúdio</h1>
+      <p class="text-xs text-gray-400 mb-5">Descreva o que você imagina e a Nea cria.</p>
+
+      <div class="card-dark rounded-2xl p-4 mb-6">
+        <textarea id="mediaPrompt" rows="3" placeholder="Ex.: uma cidade flutuante ao amanhecer..." class="w-full bg-transparent text-xs text-gray-200 placeholder-gray-500 focus:outline-none resize-none mb-4"></textarea>
+
+        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-1">Tipo de Mídia</label>
+        <select id="mediaType" class="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-xs text-gray-300 focus:outline-none mb-4">
+          <option>Imagem</option>
+          <option>Vídeo</option>
+        </select>
+
+        <button onclick="prepareMedia()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-md">
+          <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Criar Mídia
+        </button>
+
+        <p id="mediaStatus" class="text-xs text-gray-400 mt-3 text-center"></p>
+      </div>
+    </section>
+
+    <!-- 4. MEMÓRIA -->
+    <section id="tab-memoria" class="tab-content hidden">
+      <h1 class="text-2xl font-bold mb-1">Memória</h1>
+      <p class="text-xs text-gray-400 mb-5">Gerencie o que a Nea lembra sobre você.</p>
+    </section>
+
+    <!-- 5. AJUSTES -->
+    <section id="tab-ajustes" class="tab-content hidden">
+      <h1 class="text-2xl font-bold mb-1">Ajustes</h1>
+      <p class="text-xs text-gray-400 mb-5">Definições da conta.</p>
+    </section>
+
+  </main>
+
+  <!-- LÓGICA JS -->
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const openMenuBtn = $('openMenuBtn');
+    const closeMenuBtn = $('closeMenuBtn');
+    const sidebar = $('sidebar');
+    const sidebarOverlay = $('sidebarOverlay');
+
+    function openSidebar() {
+      sidebar.classList.remove('-translate-x-full');
+      sidebarOverlay.classList.remove('hidden');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+    }
+
+    openMenuBtn.addEventListener('click', openSidebar);
+    closeMenuBtn.addEventListener('click', closeSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+      });
+      const activeTab = $(`tab-${tabId}`);
+      if (activeTab) {
+        activeTab.classList.remove('hidden');
       }
-    );
-
-    let data = {};
-
-    try {
-      data = await response.json();
-    } catch {}
-
-    if (!response.ok) {
-      throw new Error(
-        data.error || 'O serviço não conseguiu gerar a imagem.'
-      );
+      window.scrollTo(0, 0);
     }
 
-    if (typeof data.image !== 'string' || !data.image) {
-      throw new Error('A API não retornou uma imagem válida.');
+    // Função atualizada para chamar a API de imagem
+    async function prepareMedia() {
+      const prompt = $('mediaPrompt').value.trim();
+      const tipo = $('mediaType').value.toLowerCase();
+      const status = $('mediaStatus');
+
+      if (!prompt) {
+        status.textContent = 'Escreva uma descrição primeiro.';
+        return;
+      }
+
+      if (tipo === 'vídeo') {
+        status.textContent = 'A geração de vídeos ainda será conectada. Vamos testar as imagens primeiro.';
+        return;
+      }
+
+      let resultado = $('mediaResult');
+
+      if (!resultado) {
+        resultado = document.createElement('div');
+        resultado.id = 'mediaResult';
+        status.insertAdjacentElement('afterend', resultado);
+      }
+
+      resultado.replaceChildren();
+      status.textContent = 'A Nea está tentando criar sua imagem…';
+
+      try {
+        const response = await fetch(
+          'https://nea-ai.vercel.app/api/image',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || 'O serviço não conseguiu gerar a imagem.'
+          );
+        }
+
+        if (typeof data.image !== 'string' || !data.image) {
+          throw new Error('A API não retornou uma imagem válida.');
+        }
+
+        const imagem = document.createElement('img');
+        imagem.src = data.image;
+        imagem.alt = prompt;
+        imagem.style.maxWidth = '100%';
+        imagem.style.height = 'auto';
+        imagem.style.borderRadius = '12px';
+        imagem.style.marginTop = '12px';
+
+        resultado.appendChild(imagem);
+        status.textContent = 'Imagem criada pela Nea! 💙';
+      } catch (erro) {
+        status.textContent = 'Não consegui gerar a imagem: ' + erro.message;
+      }
     }
-
-    const imagem = document.createElement('img');
-    imagem.src = data.image;
-    imagem.alt = prompt;
-    imagem.style.maxWidth = '100%';
-    imagem.style.height = 'auto';
-    imagem.style.borderRadius = '12px';
-    imagem.style.marginTop = '12px';
-
-    resultado.appendChild(imagem);
-    status.textContent = 'Imagem criada pela Nea! 💙';
-  } catch (erro) {
-    console.error('Erro ao gerar imagem:', erro);
-    status.textContent = 'Não consegui gerar a imagem: ' + erro.message;
-  }
-}
-
-$('memoryInput').value = localStorage.getItem('nea_memory') || '';
-$('assistantName').value = localStorage.getItem('nea_name') || 'Nea';
-$('personality').value =
-  localStorage.getItem('nea_personality') ||
-  'Equilibrada, divertida e acolhedora';
-
-renderChat();
-renderHistoryList();
-
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
-</script>
+  </script>
+</body>
+</html>
