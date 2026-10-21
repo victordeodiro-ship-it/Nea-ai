@@ -1,4 +1,3 @@
-
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
@@ -9,34 +8,49 @@ export default async function handler(req, res) {
     });
   }
 
+  // Apenas a URL e o Token ficam nas variáveis globais
   const haUrl = process.env.HOME_ASSISTANT_URL;
   const haToken = process.env.HOME_ASSISTANT_TOKEN;
-  const lightEntity = process.env.HOME_ASSISTANT_LIGHT_ENTITY;
 
-  if (!haUrl || !haToken || !lightEntity) {
+  if (!haUrl || !haToken) {
     return res.status(503).json({
-      error: "Configure o Home Assistant nas variáveis da Vercel."
+      error: "Configure HOME_ASSISTANT_URL e HOME_ASSISTANT_TOKEN nas variáveis da Vercel."
     });
   }
 
-  const { action } = req.body || {};
+  // Recebe o domínio, entidade e ação dinamicamente do site
+  const { domain, entity_id, action } = req.body || {};
 
-  const services = {
+  if (!domain || !entity_id || !action) {
+    return res.status(400).json({
+      error: "Parâmetros ausentes. Envie 'domain', 'entity_id' e 'action'."
+    });
+  }
+
+  // Mapeamento das ações recebidas para as rotas do Home Assistant
+  const servicesMap = {
     ligar: "turn_on",
-    desligar: "turn_off"
+    desligar: "turn_off",
+    alternar: "toggle",
+    turn_on: "turn_on",
+    turn_off: "turn_off",
+    toggle: "toggle"
   };
 
-  if (!Object.hasOwn(services, action)) {
+  const service = servicesMap[action.toLowerCase()];
+
+  if (!service) {
     return res.status(400).json({
-      error: "Ação inválida. Use ligar ou desligar."
+      error: "Ação inválida. Use 'ligar', 'desligar' ou 'alternar'."
     });
   }
 
   try {
     const baseUrl = haUrl.replace(/\/+$/, "");
 
+    // Rota dinâmica: /api/services/{domain}/{service}
     const response = await fetch(
-      `${baseUrl}/api/services/light/${services[action]}`,
+      `${baseUrl}/api/services/${domain}/${service}`,
       {
         method: "POST",
         headers: {
@@ -44,7 +58,7 @@ export default async function handler(req, res) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          entity_id: lightEntity
+          entity_id: entity_id
         })
       }
     );
@@ -56,15 +70,13 @@ export default async function handler(req, res) {
       );
 
       return res.status(502).json({
-        error: "Não foi possível controlar a luz."
+        error: `Não foi possível controlar o dispositivo ${entity_id}.`
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: action === "ligar"
-        ? "Comando de ligar enviado."
-        : "Comando de desligar enviado."
+      message: `Comando '${service}' enviado com sucesso para ${entity_id}.`
     });
   } catch (error) {
     console.error("Erro na integração:", error.message);
@@ -74,3 +86,21 @@ export default async function handler(req, res) {
     });
   }
 }
+fetch('/api/home-assistant', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    domain: 'switch',
+    entity_id: 'switch.tomada_cafeteira',
+    action: 'desligar'
+  })
+});
+fetch('/api/home-assistant', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    domain: 'automation',
+    entity_id: 'automation.modo_cinema',
+    action: 'turn_on'
+  })
+});
