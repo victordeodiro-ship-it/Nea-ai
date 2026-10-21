@@ -67,7 +67,6 @@ export default async function handler(req, res) {
 const intencao = identificarIntencao(
   typeof ultimaMensagem?.content === "string"
     ? ultimaMensagem.content
-    : ""
     for (const message of messages) {
       if (
         !message ||
