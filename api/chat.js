@@ -68,19 +68,6 @@ const intencao = identificarIntencao(
   typeof ultimaMensagem?.content === "string"
     ? ultimaMensagem.content
     : ""
-);
-
-console.log("Intenção identificada:", intencao);
-    if (
-      !Array.isArray(messages) ||
-      messages.length === 0 ||
-      messages.length > 20
-    ) {
-      return res.status(400).json({
-        error: "Envie entre 1 e 20 mensagens."
-      });
-    }
-
     for (const message of messages) {
       if (
         !message ||
