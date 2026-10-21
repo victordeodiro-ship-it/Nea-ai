@@ -1,5 +1,28 @@
 
 export default async function handler(req, res) {
+  function identificarIntencao(texto) {
+  const mensagem = texto.toLowerCase();
+
+  if (
+    /\b(apague|apaga|acenda|acenda|ligue|liga|desligue|desliga)\b.*\b(luz|lâmpada|ar-condicionado|dispositivo)\b/i.test(mensagem)
+  ) {
+    return "dispositivo";
+  }
+
+  if (
+    /\b(crie|criar|gere|gerar|faça|fazer|produza|produzir)\b.*\b(imagem|foto|desenho|ilustração)\b/i.test(mensagem)
+  ) {
+    return "imagem";
+  }
+
+  if (
+    /\b(crie|criar|gere|gerar|faça|fazer|produza|produzir)\b.*\b(vídeo|video|animação|clipe)\b/i.test(mensagem)
+  ) {
+    return "video";
+  }
+
+  return "conversa";
+  }
   const allowedOrigin =
     "https://victordeodiro-ship-it.github.io";
 
