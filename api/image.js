@@ -1,5 +1,9 @@
 
+import { InferenceClient } from "@huggingface/inference";
+
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
   const allowedOrigins = [
     "https://victordeodiro-ship-it.github.io",
     "https://nea-ai.vercel.app"
@@ -10,21 +14,14 @@ export default async function handler(req, res) {
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "POST, OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type"
-    );
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
 
   if (req.method === "OPTIONS") {
     if (origin && !allowedOrigins.includes(origin)) {
       return res.status(403).end();
     }
-
     return res.status(204).end();
   }
 
@@ -35,6 +32,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
     return res.status(405).json({
       error: "Método não permitido."
     });
@@ -48,87 +46,51 @@ export default async function handler(req, res) {
     });
   }
 
+  const { prompt } = req.body || {};
+
+  if (
+    typeof prompt !== "string" ||
+    !prompt.trim() ||
+    prompt.length > 1000
+  ) {
+    return res.status(400).json({
+      error: "Envie uma descrição de imagem válida."
+    });
+  }
+
   try {
-    const { prompt } = req.body || {};
+    const client = new InferenceClient(token);
 
-    if (
-      typeof prompt !== "string" ||
-      prompt.trim().length === 0 ||
-      prompt.length > 1000
-    ) {
-      return res.status(400).json({
-        error: "Envie uma descrição de imagem válida."
-      });
-    }
+    const image = await client.textToImage({
+      model: "black-forest-labs/FLUX.1-schnell",
+      provider: "auto",
+      inputs: prompt.trim()
+    });
 
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          inputs: prompt.trim()
-        })
-      }
-    );
+    const bytes = Buffer.from(await image.arrayBuffer());
 
-    if (!response.ok) {
-      const details = await response.text();
-
-      console.error(
-        "Erro do Hugging Face:",
-        response.status,
-        details.slice(0, 500)
-      );
-
-      // Diagnóstico temporário: não inclui o token.
-      // O detalhe pode ficar visível publicamente.
-      let safeDetail = details
-        .replace(/Bearer\s+\S+/gi, "Bearer [oculto]")
-        .replace(/hf_[A-Za-z0-9]+/g, "[token oculto]")
-        .slice(0, 200);
-
+    if (bytes.length > 8 * 1024 * 1024) {
       return res.status(502).json({
-        error:
-          "Falha no Hugging Face (HTTP " +
-          response.status +
-          "): " +
-          safeDetail
+        error: "A imagem excede o limite de 8 MB."
       });
     }
 
-    const imageBuffer = Buffer.from(
-      await response.arrayBuffer()
-    );
-
-    const contentType =
-      response.headers.get("content-type") ||
-      "image/jpeg";
+    const contentType = image.type || "image/png";
 
     if (!contentType.startsWith("image/")) {
       return res.status(502).json({
-        error: "O serviço não retornou uma imagem."
+        error: "O serviço não retornou uma imagem válida."
       });
     }
 
     return res.status(200).json({
-      image:
-        "data:" +
-        contentType +
-        ";base64," +
-        imageBuffer.toString("base64")
+      image: `data:${contentType};base64,${bytes.toString("base64")}`
     });
   } catch (error) {
-    console.error(
-      "Erro na geração de imagem:",
-      error.message
-    );
+    console.error("Erro na geração de imagem:", error.message);
 
-    return res.status(500).json({
-      error: "Ocorreu um erro ao gerar a imagem."
+    return res.status(502).json({
+      error: "A geração falhou. Verifique o acesso ao modelo e os créditos do Hugging Face."
     });
   }
 }
