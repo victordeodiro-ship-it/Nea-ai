@@ -1,4 +1,7 @@
 
 {
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@huggingface/inference": "latest"
+  }
 }
